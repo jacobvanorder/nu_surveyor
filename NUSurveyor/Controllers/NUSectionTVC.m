@@ -12,6 +12,7 @@
 #import "NUButton.h"
 #import "NSString+NUAdditions.h"
 #import "NUCell.h"
+#import "NUPickerVC.h"
 
 @interface VisibleSection : NSObject {
     NSString* _uuid;
@@ -21,7 +22,6 @@
 @property(nonatomic,retain)NSString* uuid;
 @property(nonatomic,retain)NSNumber* rgid;
 @property(nonatomic,retain)NSString* groupUUID;
-
 
 @end
 
@@ -43,10 +43,17 @@
 
 @end
 
-@interface NUSectionTVC()
+@interface NUSectionTVC() <UIPickerViewDataSource, UIPickerViewDelegate, NUPickerVCDelegate>
 // http://swish-movement.blogspot.com/2009/05/private-properties-for-iphone-objective.html
 @property (nonatomic, retain) UIView *cursorView;
 @property (nonatomic, retain) NSIndexPath *cursorIndex;
+
+//language
+@property (nonatomic, strong) UIPopoverController *languagePopoverController;
+@property (nonatomic, strong) NUPickerVC *languagePickerVC;
+@property (nonatomic, strong) NSDictionary *selectedLanguageDictionary;
+@property (nonatomic, strong) NSArray *translationsArray;
+
 // Table and section headers
 - (void)createHeader;
 - (void)createFooter;
@@ -64,6 +71,10 @@
 - (void)createRows;
 - (BOOL)isLastSectionInRepeaterGroup:(NSInteger)section;
 - (NSArray*)findVisibleSectionsWithGroupUUID:(NSString*)uuid;
+//language
+-(void)languageButtonTapped:(UIBarButtonItem *)barButtonItem;
+-(void)refreshSectionWithTranslation:(NSDictionary *)translationDictionary;
+
 -(void)deselectOtherNonExclusiveCellsInSectionOfIndex:(NSIndexPath *)idx;
 
 @end
@@ -71,6 +82,8 @@
 @implementation NUSectionTVC
 @synthesize cursorView = _cursorView, cursorIndex = _cursorIndex;
 @synthesize pageControl = _pageControl, popController = _popController, detailItem = _detailItem, responseSet = _responseSet, visibleSections = _visibleSections, allSections = _allSections, visibleHeaders = _visibleHeaders, prevSectionTitle = _prevSectionTitle, nextSectionTitle = _nextSectionTitle, delegate = _delegate, renderContext = _renderContext;
+@synthesize languagePopoverController, languagePickerVC;
+
 
 #pragma mark - Utility class methods
 + (NSString *) classNameForQuestion:(NSDictionary *)questionOrGroup answer:(NSDictionary *)answer {
@@ -202,13 +215,63 @@
 
 #pragma mark - Detail item
 - (void)setDetailItem:(id)detailItem {
-  if (detailItem != _detailItem) {
-    _detailItem = detailItem;
-    [self createRows];
-  }
-  if (self.popController != nil) {
-    [self.popController dismissPopoverAnimated:YES];
-  }
+    if (detailItem != _detailItem) {
+        _detailItem = detailItem;
+
+        [self createRows];
+    }
+    if (self.popController != nil) {
+        [self.popController dismissPopoverAnimated:YES];
+    }
+}
+
+
+
+-(NSDictionary *)translatedQuestionOrGroup:(NSDictionary *)originalQuestionOrGroup {
+    NSString *currentTranslationCode = self.selectedLanguageDictionary[@"locale"];
+    if (!currentTranslationCode) {
+        return nil;
+    }
+    else { //Yeah… sorry about this confusing part…
+        NSString *questionOrGroupUUID = originalQuestionOrGroup[@"uuid"];
+        NSDictionary *translatedQuestionOrGroup = [[self.selectedLanguageDictionary[@"questions"] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"uuid == %@", questionOrGroupUUID]] lastObject];
+        if (translatedQuestionOrGroup != nil) {
+            NSDictionary * (^ translatedDictionaryBlock)(NSDictionary *, NSDictionary *) = ^(NSDictionary *originalQuestionDictionary, NSDictionary *translatedQuestionDictionary) {
+                NSMutableDictionary *mutableQuestionDictionary = [originalQuestionDictionary mutableCopy];
+                mutableQuestionDictionary[@"text"] = translatedQuestionDictionary[@"text"];
+                NSMutableArray *mutableAnswerArray = [originalQuestionDictionary[@"answers"] mutableCopy];
+                for (NSDictionary *answerDictionary in originalQuestionDictionary[@"answers"]) {
+                    NSUInteger answerIndex = [originalQuestionDictionary[@"answers"] indexOfObject:answerDictionary];
+                    NSDictionary *translatedAnswer = translatedQuestionDictionary[@"answers"][answerIndex];
+                    if (translatedAnswer) {
+                        [mutableAnswerArray replaceObjectAtIndex:answerIndex withObject:translatedAnswer];
+                    }
+                }
+                mutableQuestionDictionary[@"answers"] = [NSArray arrayWithArray:mutableAnswerArray];
+                return [NSDictionary dictionaryWithDictionary:mutableQuestionDictionary];
+            };
+            
+            if (originalQuestionOrGroup[@"questions"]) {
+                NSMutableDictionary *mutableGroup = [originalQuestionOrGroup mutableCopy];
+                mutableGroup[@"text"] = translatedQuestionOrGroup[@"text"];
+                NSMutableArray *mutableQuestions = [originalQuestionOrGroup[@"questions"] mutableCopy];
+                for (NSDictionary *questionDictionary in originalQuestionOrGroup[@"questions"]) {
+                    NSUInteger indexOfQuestion = [originalQuestionOrGroup[@"questions"] indexOfObject:questionDictionary];
+                    NSDictionary *translatedQuestionDictionary = translatedQuestionOrGroup[@"questions"][indexOfQuestion];
+                    [mutableQuestions replaceObjectAtIndex:indexOfQuestion withObject:translatedDictionaryBlock(questionDictionary, translatedQuestionDictionary)];
+                }
+                mutableGroup[@"questions"] = [NSArray arrayWithArray:mutableQuestions];
+                return [NSDictionary dictionaryWithDictionary:mutableGroup];
+            }
+            else {
+                return translatedDictionaryBlock(originalQuestionOrGroup, translatedQuestionOrGroup);
+            }
+        }
+        else {
+            return nil;
+        }
+    }
+    return nil;
 }
 
 - (void)createRows
@@ -219,16 +282,20 @@
   self.visibleHeaders = nil;
   self.allSections = nil;
   self.visibleSections = nil;
-	
-  
-  // generate a full listing of all questions, including labels, 
+
+  // generate a full listing of all questions, including labels,
   //   hidden questions, dependent questions, as well as separate 
   //   sections for group titles and their grouped questions, etc.
   self.allSections = [[NSMutableArray alloc] init];
-  for(NSDictionary *questionOrGroup in [self.detailItem objectForKey:@"questions_and_groups"]){
+  for(NSDictionary __strong *questionOrGroup in [self.detailItem objectForKey:@"questions_and_groups"]){
     // regular questions, grids
+      NSString *questionOrGroupUUID = [questionOrGroup objectForKey:@"uuid"] == nil ? [NUUUID generateUuidString] : [questionOrGroup objectForKey:@"uuid"];
+      if (self.selectedLanguageDictionary) {
+          NSDictionary *translatedQuestionOrGroup = [self translatedQuestionOrGroup:questionOrGroup];
+          questionOrGroup = (translatedQuestionOrGroup) ? translatedQuestionOrGroup : questionOrGroup;
+      }
     [self.allSections addObject:[NSMutableDictionary dictionaryWithObjectsAndKeys:
-                                [questionOrGroup objectForKey:@"uuid"] == nil ? [NUUUID generateUuidString] : [questionOrGroup objectForKey:@"uuid"], @"uuid",
+                                questionOrGroupUUID, @"uuid",
                                  questionOrGroup, @"question",
                                  (![[questionOrGroup objectForKey:@"type"] isEqualToString:@"hidden"] && [self.responseSet showDependency:[questionOrGroup objectForKey:@"dependency"]]) ? NS_YES : NS_NO, @"show", nil ]];
     //    DLog(@"uuid: %@ questionOrGroup: %@", [questionOrGroup objectForKey:@"uuid"], questionOrGroup);
@@ -280,6 +347,7 @@
       [self.visibleSections addObject:v];
     }
   }
+
 	//  DLog(@"visible sections: %@", visibleSections);
 	
 	//	[self hideLoadingIndicator];
@@ -457,7 +525,8 @@
         v = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, self.tableView.bounds.size.width, height)];
         
         NUButton *addRowButton = [[NUButton alloc] initWithFrame:CGRectMake(HorizontalMargin, 0, 100.0, height)];
-        [addRowButton setTitle:@"+ add row" forState:UIControlStateNormal];
+        NSString *addRowTitle = [NSString stringWithFormat:@"+ %@", [self localizedStringForKey:@"add row" value:@"add row" forLocale:self.selectedLanguageDictionary[@"locale"]]];
+        [addRowButton setTitle:addRowTitle forState:UIControlStateNormal];
         [addRowButton addTarget:self action:@selector(addRow) forControlEvents:UIControlEventTouchUpInside];
         [v addSubview:addRowButton];
     }
@@ -498,13 +567,14 @@
   if (self.prevSectionTitle) {
     CGFloat height = 32.0;
     NUButton *prevSectionButton = [[NUButton alloc] initWithFrame:CGRectMake(HorizontalMargin, y, 100.0, height)];
-    [prevSectionButton setTitle:[NSString stringWithFormat:@"Previous: %@", self.prevSectionTitle] forState:UIControlStateNormal];    
+    [prevSectionButton setTitle:[NSString stringWithFormat:@"%@: %@", [self localizedStringForKey:@"Previous" value:@"Previous" forLocale:self.selectedLanguageDictionary[@"locale"]], self.prevSectionTitle] forState:UIControlStateNormal];
     [prevSectionButton addTarget:self.delegate action:@selector(prevSection) forControlEvents:UIControlEventTouchUpInside];
     [headerView addSubview:prevSectionButton];
     y+= height + VerticalMargin;
   }
   UILabel *section_title = [[UILabel alloc] initWithFrame:CGRectMake(HorizontalMargin, y, self.tableView.bounds.size.width - (2 * HorizontalMargin), 22.0)];
-  section_title.text = [self.detailItem valueForKey:@"title"];
+    
+    section_title.text = (self.selectedLanguageDictionary[@"title"]) ? self.selectedLanguageDictionary[@"title"] : [self.detailItem valueForKey:@"title"];
   [section_title setUpMultiLineVerticalResizeWithFont:[UIFont systemFontOfSize:22.0]];
   section_title.backgroundColor = isGrouped ? [UIColor clearColor] : [UIColor colorWithRed:0.46 green:0.52 blue:0.56 alpha:0.5];
   y += section_title.frame.size.height + VerticalMargin;
@@ -522,7 +592,7 @@
   
   UIView *footerView = [[UIView alloc] initWithFrame:CGRectZero];
   NUButton *nextSectionOrDoneButton = [[NUButton alloc] initWithFrame:CGRectMake(HorizontalMargin, y, 100.0, height)];
-  [nextSectionOrDoneButton setTitle:(self.nextSectionTitle ? [NSString stringWithFormat:@"Next: %@", self.nextSectionTitle] : @"Done") forState:UIControlStateNormal];    
+  [nextSectionOrDoneButton setTitle:(self.nextSectionTitle ? [NSString stringWithFormat:@"%@: %@",[self localizedStringForKey:@"Next" value:@"Next" forLocale:self.selectedLanguageDictionary[@"locale"]], self.nextSectionTitle] : [self localizedStringForKey:@"Done" value:@"Done" forLocale:self.selectedLanguageDictionary[@"locale"]]) forState:UIControlStateNormal];
   nextSectionOrDoneButton.frame = CGRectMake(self.tableView.frame.size.width - nextSectionOrDoneButton.frame.size.width - HorizontalMargin, y, nextSectionOrDoneButton.frame.size.width, height);
   [nextSectionOrDoneButton addTarget:self.delegate action:(self.nextSectionTitle ? @selector(nextSection) : @selector(surveyDone)) forControlEvents:UIControlEventTouchUpInside];
   [footerView addSubview:nextSectionOrDoneButton];
@@ -720,6 +790,102 @@
         }
     }
     return found;
+}
+
+#pragma mark - Translation (Private)
+
+-(void)setTranslationsArray:(NSArray *)translationsArray forSectionWithUUID:(NSString *)sectionUUID withCurrentLocale:(NSString *)localeString {
+    if (sectionUUID == nil) {
+        _translationsArray = nil;
+        return;
+    }
+    _translationsArray = nil;
+    NSMutableArray *containerArray = [@[] mutableCopy];
+    for (NSDictionary *originalLanguageDictionary in translationsArray) {
+        NSMutableDictionary *mutableLanguageDictionary = [originalLanguageDictionary mutableCopy];
+        if (originalLanguageDictionary[@"sections"]) {
+            NSDictionary *sectionDictionary = [[originalLanguageDictionary[@"sections"] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"uuid == %@", sectionUUID]] lastObject];
+            if (sectionDictionary) {
+                [mutableLanguageDictionary setObject:sectionDictionary[@"questions_and_groups"] forKey:@"questions"];
+            }
+            [mutableLanguageDictionary removeObjectForKey:@"sections"];
+        }
+        [containerArray addObject:[NSDictionary dictionaryWithDictionary:mutableLanguageDictionary]];
+    }
+    _translationsArray = [NSArray arrayWithArray:containerArray];
+    self.selectedLanguageDictionary = [_translationsArray filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"locale == %@", (localeString) ? localeString : @"en"]].lastObject;
+    
+    if ([_translationsArray count] > 0 && [self.navigationItem.rightBarButtonItems count] < 2) {
+        UIBarButtonItem *languageButton = [[UIBarButtonItem alloc] initWithTitle:@"Language" style:UIBarButtonItemStyleBordered target:self action:@selector(languageButtonTapped:)];
+        [self.navigationItem setRightBarButtonItems:[[self.navigationItem rightBarButtonItems] arrayByAddingObject:languageButton]];
+    }
+}
+
+-(void)languageButtonTapped:(UIBarButtonItem *)barButtonItem {
+    if (self.languagePopoverController.isPopoverVisible == NO) {
+        self.languagePickerVC = [[NUPickerVC alloc] init];
+        self.languagePickerVC.picker.showsSelectionIndicator = YES;
+        UINavigationController *languageNavigationController = [[UINavigationController alloc] initWithRootViewController:languagePickerVC];
+        self.languagePopoverController = [[UIPopoverController alloc] initWithContentViewController:languageNavigationController];
+        [self.languagePickerVC setupDelegate:self withTitle:@"Language" date:NO];
+        
+        self.languagePickerVC.contentSizeForViewInPopover = CGSizeMake(320.0f, 260.0f);
+        self.languagePopoverController.popoverContentSize = CGSizeMake(320.0f, 260.0f);
+        self.languagePickerVC.picker.frame = CGRectMake(0.0f, 0.0f, 320.0f, 216.0f);
+        self.languagePickerVC.picker.autoresizingMask = 0;
+        
+        [self.languagePickerVC.picker selectRow:[self.translationsArray indexOfObject:self.selectedLanguageDictionary] inComponent:0 animated:NO];
+        [self.languagePopoverController presentPopoverFromBarButtonItem:barButtonItem permittedArrowDirections:UIPopoverArrowDirectionUp animated:YES];
+    }
+}
+
+-(void)refreshSectionWithTranslation:(NSDictionary *)translationDictionary {
+    self.selectedLanguageDictionary = translationDictionary;
+    [self.delegate surveySelectedLanguage:self.selectedLanguageDictionary[@"locale"]];
+    [self createRows];
+}
+
+#pragma mark prototype
+
+- (NSString *)localizedStringForKey:(NSString *)key value:(NSString *)comment forLocale:(NSString *)newLanguage
+{
+    NSString *path = [[ NSBundle mainBundle ] pathForResource:newLanguage ofType:@"lproj" ];
+    NSBundle *bundle = nil;
+    
+    if (path == nil)
+        //in case the language does not exists
+        bundle = [NSBundle mainBundle];
+    else
+        bundle = [NSBundle bundleWithPath:path];
+
+    NSString *returnString = [bundle localizedStringForKey:key value:comment table:nil];
+    return (returnString) ? returnString : key;
+}
+
+
+#pragma mark - PickerVC delegate
+
+-(void)pickerViewControllerIsDone:(NUPickerVC *)pickerViewController {
+    NSInteger selectedIndex = [pickerViewController.picker selectedRowInComponent:0];
+    NSDictionary *selectedTranslation = self.translationsArray[selectedIndex];
+    [self refreshSectionWithTranslation:selectedTranslation];
+    [self.languagePopoverController dismissPopoverAnimated:YES];
+}
+
+#pragma mark - Picker view data source
+- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView{
+    return 1;
+}
+
+#pragma mark - Picker view delegate
+- (NSInteger)pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component {
+    NSArray *localizedTranslationNameArray = [self.translationsArray valueForKeyPath:@"localizedName"];
+   return [localizedTranslationNameArray count];
+}
+
+-(NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component {
+    NSArray *localizedTranslationNameArray = [self.translationsArray valueForKeyPath:@"localizedName"];
+    return localizedTranslationNameArray[row];
 }
 
 #pragma mark - Core Data

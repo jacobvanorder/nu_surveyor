@@ -34,6 +34,10 @@
 		00DD775516A74CBA00D78EBE /* animals.json in Resources */ = {isa = PBXBuildFile; fileRef = 00DD775416A74CBA00D78EBE /* animals.json */; };
 		00DD775716A74E1900D78EBE /* complex_dependencies.feature in Resources */ = {isa = PBXBuildFile; fileRef = 00DD775616A74E1900D78EBE /* complex_dependencies.feature */; };
 		167C73EB16C56CA7003DE64B /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 167C73EA16C56CA7003DE64B /* Default-568h@2x.png */; };
+		16B55249173D6D0F00B8DEB9 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 16B5524B173D6D0F00B8DEB9 /* Localizable.strings */; };
+		16E1277A173ACE3E00685C5E /* translations.feature in Resources */ = {isa = PBXBuildFile; fileRef = 16E12779173ACE3E00685C5E /* translations.feature */; };
+		16E76269173981AD00048AB7 /* translation.json in Resources */ = {isa = PBXBuildFile; fileRef = 16E76268173981AD00048AB7 /* translation.json */; };
+		16E7626A173981AD00048AB7 /* translation.json in Resources */ = {isa = PBXBuildFile; fileRef = 16E76268173981AD00048AB7 /* translation.json */; };
 		16F5F2AB16C02041007F0AD9 /* SectionTVCTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 3BF20D1F15339930008227B2 /* SectionTVCTest.m */; };
 		16F5F2AC16C02044007F0AD9 /* KIFTestScenario+SectionAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 3BF20D25153399DA008227B2 /* KIFTestScenario+SectionAdditions.m */; };
 		16F5F2AD16C02047007F0AD9 /* KIFTestStep+SectionAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 3BF20D2815339A6F008227B2 /* KIFTestStep+SectionAdditions.m */; };
@@ -250,6 +254,11 @@
 		16274D3C16C45E5100DBBAFC /* textFieldResigns.feature */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = textFieldResigns.feature; sourceTree = "<group>"; };
 		1673249816E7C4CE00D982D5 /* exclusive_answer.feature */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = exclusive_answer.feature; sourceTree = "<group>"; };
 		167C73EA16C56CA7003DE64B /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		16B5524A173D6D0F00B8DEB9 /* en */ = {isa = PBXFileReference; lastKnownFileType = file; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		16B5524C173D6D1300B8DEB9 /* fr */ = {isa = PBXFileReference; lastKnownFileType = file; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		16B5524D173D6D1400B8DEB9 /* es */ = {isa = PBXFileReference; lastKnownFileType = file; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
+		16E12779173ACE3E00685C5E /* translations.feature */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = translations.feature; sourceTree = "<group>"; };
+		16E76268173981AD00048AB7 /* translation.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = translation.json; sourceTree = "<group>"; };
 		16F5F2B116C03DDC007F0AD9 /* dependencies_toolbox.feature */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = dependencies_toolbox.feature; sourceTree = "<group>"; };
 		16F5F2B216C056C5007F0AD9 /* dependencyToolbox.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = dependencyToolbox.json; sourceTree = "<group>"; };
 		3B08678E14FED8C100D43E02 /* group_dependency.feature */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = group_dependency.feature; sourceTree = "<group>"; };
@@ -1007,11 +1016,13 @@
 				3BDB4BD41536123A00868F97 /* pbj.json */,
 				16F5F2B216C056C5007F0AD9 /* dependencyToolbox.json */,
 				3BB92965166FE58E00C2D5AE /* states-and-dates.json */,
+				16E76268173981AD00048AB7 /* translation.json */,
 				67DB49AD14D09454009CC8C3 /* NUSurveyorExample-Info.plist */,
 				67DB49AE14D09454009CC8C3 /* InfoPlist.strings */,
 				67DB49B114D09454009CC8C3 /* main.m */,
 				67DB49B314D09454009CC8C3 /* NUSurveyorExample-Prefix.pch */,
 				00DD775416A74CBA00D78EBE /* animals.json */,
+				16B5524B173D6D0F00B8DEB9 /* Localizable.strings */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -1037,6 +1048,7 @@
 				16F5F2B116C03DDC007F0AD9 /* dependencies_toolbox.feature */,
 				3BC61A9615211EF000A8C20C /* complex_responses.feature */,
 				3BF9710D1524FE08008D3A9A /* mustache.feature */,
+				16E12779173ACE3E00685C5E /* translations.feature */,
 				16274D3C16C45E5100DBBAFC /* textFieldResigns.feature */,
 				1673249816E7C4CE00D982D5 /* exclusive_answer.feature */,
 				67DB4A0914D09EB6009CC8C3 /* step_definitions */,
@@ -1231,6 +1243,8 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				fr,
+				es,
 			);
 			mainGroup = 3BD52A9614C8B43400AB61E8;
 			productRefGroup = 3BD52AA214C8B43500AB61E8 /* Products */;
@@ -1310,6 +1324,8 @@
 				3B8CF201151B91C600EA4148 /* test-birth-date-survey.json in Resources */,
 				3BF8D16B1694C92F00E1D438 /* screener.json in Resources */,
 				0030EA2616C1FB2A00694153 /* double_dependency.json in Resources */,
+				16E76269173981AD00048AB7 /* translation.json in Resources */,
+				16E1277A173ACE3E00685C5E /* translations.feature in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1347,6 +1363,8 @@
 				0030EA3E16C459D200694153 /* repeater_conditions.feature in Resources */,
 				167C73EB16C56CA7003DE64B /* Default-568h@2x.png in Resources */,
 				00B8756316D518A600CED547 /* grid.json in Resources */,
+				16E7626A173981AD00048AB7 /* translation.json in Resources */,
+				16B55249173D6D0F00B8DEB9 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1490,6 +1508,16 @@
 				0071908115C33A2B008CB666 /* en */,
 			);
 			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		16B5524B173D6D0F00B8DEB9 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				16B5524A173D6D0F00B8DEB9 /* en */,
+				16B5524C173D6D1300B8DEB9 /* fr */,
+				16B5524D173D6D1400B8DEB9 /* es */,
+			);
+			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
 		3BD52ABD14C8B43500AB61E8 /* InfoPlist.strings */ = {
